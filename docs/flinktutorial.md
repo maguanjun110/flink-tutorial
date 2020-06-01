@@ -2001,7 +2001,7 @@ dataStream.addSink(esSinkBuilder.build())
 
 添加MyJdbcSink
 
-```{.scala numberLines}
+```{.scala .numberLines}
 class MyJdbcSink() extends RichSinkFunction[SensorReading]{
   var conn: Connection = _
   var insertStmt: PreparedStatement = _
@@ -4216,8 +4216,8 @@ class SimpleSocketSink(val host: String, val port: Int)
 
 下面的例子展示了如何实现一个针对JDBC数据库的幂等写入sink连接器，这里使用的是Apache Derby数据库。
 
-```{.scala}
-val readings: DataStream[SensorReading] = ???
+```{.scala .numberLines}
+val readings: DataStream[SensorReading] = ...
 
 // write the sensor readings to a Derby table
 readings.addSink(new DerbyUpsertSink)

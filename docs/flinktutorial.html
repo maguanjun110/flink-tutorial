@@ -1770,19 +1770,46 @@
 <span id="cb72-4"><a href="#cb72-4"></a>      <span class="kw">&lt;version&gt;</span>5.1.44<span class="kw">&lt;/version&gt;</span></span>
 <span id="cb72-5"><a href="#cb72-5"></a>    <span class="kw">&lt;/dependency&gt;</span></span></code></pre></div>
 <p>添加MyJdbcSink</p>
-<p>```{.scala numberLines} class MyJdbcSink() extends RichSinkFunction[SensorReading]{ var conn: Connection = <em> var insertStmt: PreparedStatement = </em> var updateStmt: PreparedStatement = _ // open 主要是创建连接 override def open(parameters: Configuration): Unit = { super.open(parameters) conn = DriverManager.getConnection( “jdbc:mysql://localhost:3306/test”, “root”, “123456”) insertStmt = conn.prepareStatement( “INSERT INTO temperatures (sensor, temp) VALUES (?, ?)” ) updateStmt = conn.prepareStatement( “UPDATE temperatures SET temp = ? WHERE sensor = ?” ) } // 调用连接，执行sql override def invoke(value: SensorReading, context: SinkFunction.Context[_]): Unit = { updateStmt.setDouble(1, value.temperature) updateStmt.setString(2, value.id) updateStmt.execute()</p>
-<pre><code>if (updateStmt.getUpdateCount == 0) {
-  insertStmt.setString(1, value.id)
-  insertStmt.setDouble(2, value.temperature)
-  insertStmt.execute()
-}</code></pre>
-<p>}</p>
-<p>override def close(): Unit = { insertStmt.close() updateStmt.close() conn.close() } }</p>
-<pre><code>
-在main方法中增加，把明细保存到mysql中
-
-```{.scala}
-    dataStream.addSink(new MyJdbcSink())</code></pre>
+<div class="sourceCode" id="cb73"><pre class="sourceCode numberSource scala numberLines"><code class="sourceCode scala"><span id="cb73-1"><a href="#cb73-1"></a><span class="kw">class</span> <span class="fu">MyJdbcSink</span>() <span class="kw">extends</span> RichSinkFunction[SensorReading]{</span>
+<span id="cb73-2"><a href="#cb73-2"></a>  <span class="kw">var</span> conn: Connection = _</span>
+<span id="cb73-3"><a href="#cb73-3"></a>  <span class="kw">var</span> insertStmt: PreparedStatement = _</span>
+<span id="cb73-4"><a href="#cb73-4"></a>  <span class="kw">var</span> updateStmt: PreparedStatement = _</span>
+<span id="cb73-5"><a href="#cb73-5"></a>  <span class="co">// open 主要是创建连接</span></span>
+<span id="cb73-6"><a href="#cb73-6"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">open</span>(parameters: Configuration): Unit = {</span>
+<span id="cb73-7"><a href="#cb73-7"></a>    <span class="kw">super</span>.<span class="fu">open</span>(parameters)</span>
+<span id="cb73-8"><a href="#cb73-8"></a>    conn = DriverManager.<span class="fu">getConnection</span>(</span>
+<span id="cb73-9"><a href="#cb73-9"></a>      <span class="st">&quot;jdbc:mysql://localhost:3306/test&quot;</span>,</span>
+<span id="cb73-10"><a href="#cb73-10"></a>      <span class="st">&quot;root&quot;</span>,</span>
+<span id="cb73-11"><a href="#cb73-11"></a>      <span class="st">&quot;123456&quot;</span>)</span>
+<span id="cb73-12"><a href="#cb73-12"></a>    insertStmt = conn.<span class="fu">prepareStatement</span>(</span>
+<span id="cb73-13"><a href="#cb73-13"></a>      <span class="st">&quot;INSERT INTO temperatures (sensor, temp) VALUES (?, ?)&quot;</span></span>
+<span id="cb73-14"><a href="#cb73-14"></a>    )</span>
+<span id="cb73-15"><a href="#cb73-15"></a>    updateStmt = conn.<span class="fu">prepareStatement</span>(</span>
+<span id="cb73-16"><a href="#cb73-16"></a>      <span class="st">&quot;UPDATE temperatures SET temp = ? WHERE sensor = ?&quot;</span></span>
+<span id="cb73-17"><a href="#cb73-17"></a>    )</span>
+<span id="cb73-18"><a href="#cb73-18"></a>  }</span>
+<span id="cb73-19"><a href="#cb73-19"></a>  <span class="co">// 调用连接，执行sql</span></span>
+<span id="cb73-20"><a href="#cb73-20"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">invoke</span>(value: SensorReading,</span>
+<span id="cb73-21"><a href="#cb73-21"></a>                      context: SinkFunction.<span class="fu">Context</span>[_]): Unit = {</span>
+<span id="cb73-22"><a href="#cb73-22"></a>    updateStmt.<span class="fu">setDouble</span>(<span class="dv">1</span>, value.<span class="fu">temperature</span>)</span>
+<span id="cb73-23"><a href="#cb73-23"></a>    updateStmt.<span class="fu">setString</span>(<span class="dv">2</span>, value.<span class="fu">id</span>)</span>
+<span id="cb73-24"><a href="#cb73-24"></a>    updateStmt.<span class="fu">execute</span>()</span>
+<span id="cb73-25"><a href="#cb73-25"></a>    </span>
+<span id="cb73-26"><a href="#cb73-26"></a>    <span class="kw">if</span> (updateStmt.<span class="fu">getUpdateCount</span> == <span class="dv">0</span>) {</span>
+<span id="cb73-27"><a href="#cb73-27"></a>      insertStmt.<span class="fu">setString</span>(<span class="dv">1</span>, value.<span class="fu">id</span>)</span>
+<span id="cb73-28"><a href="#cb73-28"></a>      insertStmt.<span class="fu">setDouble</span>(<span class="dv">2</span>, value.<span class="fu">temperature</span>)</span>
+<span id="cb73-29"><a href="#cb73-29"></a>      insertStmt.<span class="fu">execute</span>()</span>
+<span id="cb73-30"><a href="#cb73-30"></a>    }</span>
+<span id="cb73-31"><a href="#cb73-31"></a>  }</span>
+<span id="cb73-32"><a href="#cb73-32"></a>  </span>
+<span id="cb73-33"><a href="#cb73-33"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">close</span>(): Unit = {</span>
+<span id="cb73-34"><a href="#cb73-34"></a>    insertStmt.<span class="fu">close</span>()</span>
+<span id="cb73-35"><a href="#cb73-35"></a>    updateStmt.<span class="fu">close</span>()</span>
+<span id="cb73-36"><a href="#cb73-36"></a>    conn.<span class="fu">close</span>()</span>
+<span id="cb73-37"><a href="#cb73-37"></a>  }</span>
+<span id="cb73-38"><a href="#cb73-38"></a>}</span></code></pre></div>
+<p>在main方法中增加，把明细保存到mysql中</p>
+<div class="sourceCode" id="cb74"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb74-1"><a href="#cb74-1"></a>    dataStream.<span class="fu">addSink</span>(<span class="kw">new</span> <span class="fu">MyJdbcSink</span>())</span></code></pre></div>
 <h1 id="第六章基于时间和窗口的操作符">第六章，基于时间和窗口的操作符</h1>
 <p>在本章，我们将要学习DataStream API中处理时间和基于时间的操作符，例如窗口操作符。</p>
 <p>首先，我们会学习如何定义时间属性，时间戳和水位线。然后我们将会学习底层操作process function，它可以让我们访问时间戳和水位线，以及注册定时器事件。接下来，我们将会使用Flink的window API，它提供了通常使用的各种窗口类型的内置实现。我们将会学到如何进行用户自定义窗口操作符，以及窗口的核心功能：assigners（分配器）、triggers（触发器）和evictors（清理器）。最后，我们将讨论如何基于时间来做流的联结查询，以及处理迟到事件的策略。</p>
@@ -3532,52 +3559,52 @@
 <li>外部系统支持针对每个key的更新，例如关系型数据库或者key-value存储。</li>
 </ul>
 <p>下面的例子展示了如何实现一个针对JDBC数据库的幂等写入sink连接器，这里使用的是Apache Derby数据库。</p>
-<div class="sourceCode" id="cb140"><pre class="sourceCode scala"><code class="sourceCode scala"><span id="cb140-1"><a href="#cb140-1"></a>    <span class="kw">val</span> readings: DataStream[SensorReading] = ???</span>
-<span id="cb140-2"><a href="#cb140-2"></a>    </span>
-<span id="cb140-3"><a href="#cb140-3"></a>    <span class="co">// write the sensor readings to a Derby table</span></span>
-<span id="cb140-4"><a href="#cb140-4"></a>    readings.<span class="fu">addSink</span>(<span class="kw">new</span> DerbyUpsertSink)</span>
-<span id="cb140-5"><a href="#cb140-5"></a>    </span>
-<span id="cb140-6"><a href="#cb140-6"></a>    <span class="co">// -----</span></span>
-<span id="cb140-7"><a href="#cb140-7"></a>    </span>
-<span id="cb140-8"><a href="#cb140-8"></a>    <span class="kw">class</span> DerbyUpsertSink <span class="kw">extends</span> RichSinkFunction[SensorReading] {</span>
-<span id="cb140-9"><a href="#cb140-9"></a>      <span class="kw">var</span> conn: Connection = _</span>
-<span id="cb140-10"><a href="#cb140-10"></a>      <span class="kw">var</span> insertStmt: PreparedStatement = _</span>
-<span id="cb140-11"><a href="#cb140-11"></a>      <span class="kw">var</span> updateStmt: PreparedStatement = _</span>
-<span id="cb140-12"><a href="#cb140-12"></a>    </span>
-<span id="cb140-13"><a href="#cb140-13"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">open</span>(parameters: Configuration): Unit = {</span>
-<span id="cb140-14"><a href="#cb140-14"></a>        <span class="co">// connect to embedded in-memory Derby</span></span>
-<span id="cb140-15"><a href="#cb140-15"></a>        conn = DriverManager.<span class="fu">getConnection</span>(</span>
-<span id="cb140-16"><a href="#cb140-16"></a>           <span class="st">&quot;jdbc:derby:memory:flinkExample&quot;</span>,</span>
-<span id="cb140-17"><a href="#cb140-17"></a>           <span class="kw">new</span> Properties())</span>
-<span id="cb140-18"><a href="#cb140-18"></a>        <span class="co">// prepare insert and update statements</span></span>
-<span id="cb140-19"><a href="#cb140-19"></a>        insertStmt = conn.<span class="fu">prepareStatement</span>(</span>
-<span id="cb140-20"><a href="#cb140-20"></a>          <span class="st">&quot;INSERT INTO Temperatures (sensor, temp) VALUES (?, ?)&quot;</span>)</span>
-<span id="cb140-21"><a href="#cb140-21"></a>        updateStmt = conn.<span class="fu">prepareStatement</span>(</span>
-<span id="cb140-22"><a href="#cb140-22"></a>          <span class="st">&quot;UPDATE Temperatures SET temp = ? WHERE sensor = ?&quot;</span>)</span>
-<span id="cb140-23"><a href="#cb140-23"></a>      }</span>
-<span id="cb140-24"><a href="#cb140-24"></a>    </span>
-<span id="cb140-25"><a href="#cb140-25"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">invoke</span>(r: SensorReading, context: Context[_]): Unit = {</span>
-<span id="cb140-26"><a href="#cb140-26"></a>        <span class="co">// set parameters for update statement and execute it</span></span>
-<span id="cb140-27"><a href="#cb140-27"></a>        updateStmt.<span class="fu">setDouble</span>(<span class="dv">1</span>, r.<span class="fu">temperature</span>)</span>
-<span id="cb140-28"><a href="#cb140-28"></a>        updateStmt.<span class="fu">setString</span>(<span class="dv">2</span>, r.<span class="fu">id</span>)</span>
-<span id="cb140-29"><a href="#cb140-29"></a>        updateStmt.<span class="fu">execute</span>()</span>
-<span id="cb140-30"><a href="#cb140-30"></a>        <span class="co">// execute insert statement</span></span>
-<span id="cb140-31"><a href="#cb140-31"></a>        <span class="co">// if update statement did not update any row</span></span>
-<span id="cb140-32"><a href="#cb140-32"></a>        <span class="kw">if</span> (updateStmt.<span class="fu">getUpdateCount</span> == <span class="dv">0</span>) {</span>
-<span id="cb140-33"><a href="#cb140-33"></a>          <span class="co">// set parameters for insert statement</span></span>
-<span id="cb140-34"><a href="#cb140-34"></a>          insertStmt.<span class="fu">setString</span>(<span class="dv">1</span>, r.<span class="fu">id</span>)</span>
-<span id="cb140-35"><a href="#cb140-35"></a>          insertStmt.<span class="fu">setDouble</span>(<span class="dv">2</span>, r.<span class="fu">temperature</span>)</span>
-<span id="cb140-36"><a href="#cb140-36"></a>          <span class="co">// execute insert statement</span></span>
-<span id="cb140-37"><a href="#cb140-37"></a>          insertStmt.<span class="fu">execute</span>()</span>
-<span id="cb140-38"><a href="#cb140-38"></a>        }</span>
-<span id="cb140-39"><a href="#cb140-39"></a>      }</span>
-<span id="cb140-40"><a href="#cb140-40"></a>    </span>
-<span id="cb140-41"><a href="#cb140-41"></a>      <span class="kw">override</span> <span class="kw">def</span> <span class="fu">close</span>(): Unit = {</span>
-<span id="cb140-42"><a href="#cb140-42"></a>        insertStmt.<span class="fu">close</span>()</span>
-<span id="cb140-43"><a href="#cb140-43"></a>        updateStmt.<span class="fu">close</span>()</span>
-<span id="cb140-44"><a href="#cb140-44"></a>        conn.<span class="fu">close</span>()</span>
-<span id="cb140-45"><a href="#cb140-45"></a>      }</span>
-<span id="cb140-46"><a href="#cb140-46"></a>    }</span></code></pre></div>
+<div class="sourceCode" id="cb140"><pre class="sourceCode numberSource scala numberLines"><code class="sourceCode scala"><span id="cb140-1"><a href="#cb140-1"></a><span class="kw">val</span> readings: DataStream[SensorReading] = ...</span>
+<span id="cb140-2"><a href="#cb140-2"></a></span>
+<span id="cb140-3"><a href="#cb140-3"></a><span class="co">// write the sensor readings to a Derby table</span></span>
+<span id="cb140-4"><a href="#cb140-4"></a>readings.<span class="fu">addSink</span>(<span class="kw">new</span> DerbyUpsertSink)</span>
+<span id="cb140-5"><a href="#cb140-5"></a></span>
+<span id="cb140-6"><a href="#cb140-6"></a><span class="co">// -----</span></span>
+<span id="cb140-7"><a href="#cb140-7"></a></span>
+<span id="cb140-8"><a href="#cb140-8"></a><span class="kw">class</span> DerbyUpsertSink <span class="kw">extends</span> RichSinkFunction[SensorReading] {</span>
+<span id="cb140-9"><a href="#cb140-9"></a>  <span class="kw">var</span> conn: Connection = _</span>
+<span id="cb140-10"><a href="#cb140-10"></a>  <span class="kw">var</span> insertStmt: PreparedStatement = _</span>
+<span id="cb140-11"><a href="#cb140-11"></a>  <span class="kw">var</span> updateStmt: PreparedStatement = _</span>
+<span id="cb140-12"><a href="#cb140-12"></a></span>
+<span id="cb140-13"><a href="#cb140-13"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">open</span>(parameters: Configuration): Unit = {</span>
+<span id="cb140-14"><a href="#cb140-14"></a>    <span class="co">// connect to embedded in-memory Derby</span></span>
+<span id="cb140-15"><a href="#cb140-15"></a>    conn = DriverManager.<span class="fu">getConnection</span>(</span>
+<span id="cb140-16"><a href="#cb140-16"></a>       <span class="st">&quot;jdbc:derby:memory:flinkExample&quot;</span>,</span>
+<span id="cb140-17"><a href="#cb140-17"></a>       <span class="kw">new</span> Properties())</span>
+<span id="cb140-18"><a href="#cb140-18"></a>    <span class="co">// prepare insert and update statements</span></span>
+<span id="cb140-19"><a href="#cb140-19"></a>    insertStmt = conn.<span class="fu">prepareStatement</span>(</span>
+<span id="cb140-20"><a href="#cb140-20"></a>      <span class="st">&quot;INSERT INTO Temperatures (sensor, temp) VALUES (?, ?)&quot;</span>)</span>
+<span id="cb140-21"><a href="#cb140-21"></a>    updateStmt = conn.<span class="fu">prepareStatement</span>(</span>
+<span id="cb140-22"><a href="#cb140-22"></a>      <span class="st">&quot;UPDATE Temperatures SET temp = ? WHERE sensor = ?&quot;</span>)</span>
+<span id="cb140-23"><a href="#cb140-23"></a>  }</span>
+<span id="cb140-24"><a href="#cb140-24"></a></span>
+<span id="cb140-25"><a href="#cb140-25"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">invoke</span>(r: SensorReading, context: Context[_]): Unit = {</span>
+<span id="cb140-26"><a href="#cb140-26"></a>    <span class="co">// set parameters for update statement and execute it</span></span>
+<span id="cb140-27"><a href="#cb140-27"></a>    updateStmt.<span class="fu">setDouble</span>(<span class="dv">1</span>, r.<span class="fu">temperature</span>)</span>
+<span id="cb140-28"><a href="#cb140-28"></a>    updateStmt.<span class="fu">setString</span>(<span class="dv">2</span>, r.<span class="fu">id</span>)</span>
+<span id="cb140-29"><a href="#cb140-29"></a>    updateStmt.<span class="fu">execute</span>()</span>
+<span id="cb140-30"><a href="#cb140-30"></a>    <span class="co">// execute insert statement</span></span>
+<span id="cb140-31"><a href="#cb140-31"></a>    <span class="co">// if update statement did not update any row</span></span>
+<span id="cb140-32"><a href="#cb140-32"></a>    <span class="kw">if</span> (updateStmt.<span class="fu">getUpdateCount</span> == <span class="dv">0</span>) {</span>
+<span id="cb140-33"><a href="#cb140-33"></a>      <span class="co">// set parameters for insert statement</span></span>
+<span id="cb140-34"><a href="#cb140-34"></a>      insertStmt.<span class="fu">setString</span>(<span class="dv">1</span>, r.<span class="fu">id</span>)</span>
+<span id="cb140-35"><a href="#cb140-35"></a>      insertStmt.<span class="fu">setDouble</span>(<span class="dv">2</span>, r.<span class="fu">temperature</span>)</span>
+<span id="cb140-36"><a href="#cb140-36"></a>      <span class="co">// execute insert statement</span></span>
+<span id="cb140-37"><a href="#cb140-37"></a>      insertStmt.<span class="fu">execute</span>()</span>
+<span id="cb140-38"><a href="#cb140-38"></a>    }</span>
+<span id="cb140-39"><a href="#cb140-39"></a>  }</span>
+<span id="cb140-40"><a href="#cb140-40"></a></span>
+<span id="cb140-41"><a href="#cb140-41"></a>  <span class="kw">override</span> <span class="kw">def</span> <span class="fu">close</span>(): Unit = {</span>
+<span id="cb140-42"><a href="#cb140-42"></a>    insertStmt.<span class="fu">close</span>()</span>
+<span id="cb140-43"><a href="#cb140-43"></a>    updateStmt.<span class="fu">close</span>()</span>
+<span id="cb140-44"><a href="#cb140-44"></a>    conn.<span class="fu">close</span>()</span>
+<span id="cb140-45"><a href="#cb140-45"></a>  }</span>
+<span id="cb140-46"><a href="#cb140-46"></a>}</span></code></pre></div>
 <p>由于Apache Derby并没有提供内置的UPSERT方法，所以这个sink连接器实现了UPSERT写。具体实现方法是首先去尝试更新一行数据，如果这行数据不存在，则插入新的一行数据。</p>
 <h3 id="事务性sink连接器">事务性sink连接器</h3>
 <p>事务写入sink连接器需要和Flink的检查点机制集成，因为只有在检查点成功完成以后，事务写入sink连接器才会向外部系统commit数据。</p>
