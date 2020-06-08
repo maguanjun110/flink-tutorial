@@ -1358,7 +1358,7 @@ DataStream.union()方法将两条或者多条DataStream合并成一条具有与�
 val parisStream: DataStream[SensorReading] = ...
 val tokyoStream: DataStream[SensorReading] = ...
 val rioStream: DataStream[SensorReading] = ...
-val allCities: DataStream[SensorRreading] = parisStream
+val allCities: DataStream[SensorReading] = parisStream
   .union(tokyoStream, rioStream)
 ```
 
@@ -2991,8 +2991,6 @@ public interface TriggerContext {
 
   void registerEventTimeTimer(long time);
 
-  void registerEventTimeTimer(long time);
-
   void deleteProcessingTimeTimer(long time);
 
   void deleteEventTimeTimer(long time);
@@ -3299,17 +3297,43 @@ process function可以通过比较迟到元素的时间戳和当前水位线的�
 
 例子
 
-```{.scala}
-val readings: DataStream[SensorReading] = ???
+```{.scala .numberLines}
+val readings = env
+  .socketTextStream("localhost", 9999, '\n')
+  .map(line => {
+    val arr = line.split(" ")
+    (arr(0), arr(1).toLong * 1000)
+  })
+  .assignAscendingTimestamps(_._2)
 
-val countPer10Secs: DataStream[(String, Long, Int)] = readings
-  .keyBy(_.id)
+val countPer10Secs = readings
+  .keyBy(_._1)
   .timeWindow(Time.seconds(10))
-  .sideOutputLateData(new OutputTag[SensorReading]("late-readings"))
+  .sideOutputLateData(
+    new OutputTag[(String, Long)]("late-readings")
+  )
   .process(new CountFunction())
 
-val lateStream: DataStream[SensorReading] = countPer10Secs
-  .getSideOutput(new OutputTag[SensorReading]("late-readings"))
+val lateStream = countPer10Secs
+  .getSideOutput(
+    new OutputTag[(String, Long)]("late-readings")
+  )
+
+lateStream.print()
+```
+
+实现`CountFunction`:
+
+```{.scala .numberLines}
+class CountFunction extends ProcessWindowFunction[(String, Long),
+  String, String, TimeWindow] {
+  override def process(key: String,
+                       context: Context,
+                       elements: Iterable[(String, Long)],
+                       out: Collector[String]): Unit = {
+    out.collect("窗口共有" + elements.size + "条数据")
+  }
+}
 ```
 
 下面这个例子展示了ProcessFunction如何过滤掉迟到的元素然后将迟到的元素发送到侧输出流中去。
@@ -7044,6 +7068,16 @@ object ApacheLogAnalysis {
 
 ## Uv统计的布隆过滤器实现
 
+依赖：
+
+```{.xml}
+<dependency>
+	<groupId>redis.clients</groupId>
+	<artifactId>jedis</artifactId>
+	<version>2.8.1</version>
+</dependency>
+```
+
 完整代码如下：
 
 ```{.scala .numberLines}
@@ -7486,74 +7520,68 @@ object OrderTimeout {
 ### 使用Process Function实现订单超时需求
 
 ```{.scala .numberLines}
-import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
+package com.atguigu.project
+
+import org.apache.flink.api.common.state.ValueStateDescriptor
+import org.apache.flink.api.scala.typeutils.Types
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.util.Collector
 
-case class OrderEvent1(orderId: String,
-                      eventType: String,
-                      eventTime: String)
+object OrderTimeoutWIthoutCep {
 
-object OrderTimeoutWithoutCep {
+  case class OrderEvent(orderId: String,
+                        eventType: String,
+                        eventTime: String)
+
   def main(args: Array[String]): Unit = {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setParallelism(1)
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.setParallelism(1)
 
-    val orderEventsStream = env.fromCollection(List(
-      OrderEvent1("1", "create", "1558430842"),
-      OrderEvent1("2", "create", "1558430843"),
-      OrderEvent1("2", "pay", "1558430844"),
-      OrderEvent1("3", "pay", "1558430942"),
-      OrderEvent1("4", "pay", "1558430943")
-    )).assignAscendingTimestamps(_.eventTime.toLong * 1000)
-
-    val orders = orderEventsStream
+    val stream = env
+      .fromElements(
+        OrderEvent("1", "create", "2"),
+        OrderEvent("2", "create", "3"),
+        OrderEvent("2", "pay", "4")
+      )
+      .assignAscendingTimestamps(_.eventTime.toLong * 1000L)
       .keyBy(_.orderId)
-      .process(new OrderMatchFunction)
-      .print()
+      .process(new OrderMatchFunc)
 
-    env.execute
+    stream.print()
+    env.execute()
   }
 
-  class OrderMatchFunction extends KeyedProcessFunction[String,
-    OrderEvent1, OrderEvent1] {
-    lazy val orderState: ValueState[OrderEvent1] = getRuntimeContext
-      .getState(new ValueStateDescriptor[OrderEvent1]("saved order",
-        classOf[OrderEvent1]))
+  class OrderMatchFunc extends KeyedProcessFunction[String, OrderEvent, String] {
+    lazy val orderState = getRuntimeContext.getState(
+      new ValueStateDescriptor[OrderEvent]("saved order", Types.of[OrderEvent])
+    )
 
-    override def processElement(
-      order: OrderEvent1,
-      context: KeyedProcessFunction[String, OrderEvent1, OrderEvent1]#Context,
-      out: Collector[OrderEvent1]
-    ): Unit = {
-      val timerService = context.timerService
-
-      if (order.eventType == "create") {
-        if (orderState.value() == null) {
-          orderState.update(order)
+    override def processElement(value: OrderEvent,
+                                ctx: KeyedProcessFunction[String, OrderEvent, String]#Context,
+                                out: Collector[String]): Unit = {
+      if (value.eventType.equals("create")) {
+        if (orderState.value() == null) { // 为什么要判空？因为可能出现`pay`先到的情况
+          // 如果orderState为空，保存`create`事件
+          orderState.update(value)
         }
       } else {
-        orderState.update(order)
+        // 保存`pay`事件
+        orderState.update(value)
       }
 
-      timerService.registerEventTimeTimer(
-        order.eventTime.toLong * 1000 + 5 * 1000
-      )
+      ctx.timerService().registerEventTimeTimer(value.eventTime.toLong * 1000 + 5000L)
     }
 
     override def onTimer(timestamp: Long,
-                         ctx: KeyedProcessFunction[
-                           String, OrderEvent1, OrderEvent1]#OnTimerContext,
-                         out: Collector[OrderEvent1]): Unit = {
+                         ctx: KeyedProcessFunction[String, OrderEvent, String]#OnTimerContext,
+                         out: Collector[String]): Unit = {
       val savedOrder = orderState.value()
 
-      if (savedOrder != null &&
-        (savedOrder.eventType == "create")) {
-        out.collect(savedOrder)
+      if (savedOrder != null && savedOrder.eventType.equals("create")) {
+        out.collect("超时订单的ID为：" + savedOrder.orderId)
       }
 
       orderState.clear()
@@ -7707,6 +7735,8 @@ $ bin/yarn-session.sh -n 7 -s 8 -jm 3072 -tm 32768 -qu root.*.*-nm *-* -d
 其中申请7个taskManager，每个8核，每个taskmanager有32768M内存。
 
 * 集群默认只有一个Job Manager。但为了防止单点故障，我们配置了高可用。我们公司一般配置一个主Job Manager，两个备用Job Manager，然后结合ZooKeeper的使用，来达到高可用。
+
+>作为参考，快手的Flink集群的机器数量是1500台。
 
 ## 面试题二
 
