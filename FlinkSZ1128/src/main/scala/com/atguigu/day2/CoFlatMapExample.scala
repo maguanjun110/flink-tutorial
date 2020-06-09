@@ -7,10 +7,15 @@ import org.apache.flink.util.Collector
 object CoFlatMapExample {
   def main(args: Array[String]): Unit = {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setParallelism(1)
+//    env.setParallelism(1)
+    println(env.getParallelism) // 打印默认并行度
 
-    val one: DataStream[(Int, Long)] = env.fromElements((1, 1L))
-    val two: DataStream[(Int, String)] = env.fromElements((1, "two"))
+    val one: DataStream[(Int, Long)] = env
+      .fromElements((1, 1L))
+      .setParallelism(1)
+    val two: DataStream[(Int, String)] = env
+      .fromElements((1, "two"))
+      .setParallelism(1)
 
     // 将key相同的联合到一起
     val connected: ConnectedStreams[(Int, Long), (Int, String)] = one.keyBy(_._1)
