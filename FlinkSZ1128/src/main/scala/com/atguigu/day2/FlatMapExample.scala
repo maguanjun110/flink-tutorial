@@ -22,7 +22,7 @@ object FlatMapExample {
           }
         }
       )
-//      .print()
+      .print()
 
     // 使用`FlatMapFunction`实现`FilterExample.scala`中的功能
     stream
