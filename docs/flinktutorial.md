@@ -2213,6 +2213,7 @@ class PunctuatedAssigner
   val bound: Long = 60 * 1000
 
   // 每来一条数据就调用一次
+  // 紧跟`extractTimestamp`函数调用
   override def checkAndGetNextWatermark(r: SensorReading,
                                         extractedTS: Long): Watermark = {
     if (r.id == "sensor_1") {
