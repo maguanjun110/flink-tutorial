@@ -20,8 +20,8 @@ object CoProcessFunctionExample {
     // 有限流
     val filterSwitches = env
       .fromElements(
-        ("sensor_2", 10 * 1000L),
-        ("sensor_7", 60 * 1000L)
+        ("sensor_2", 10 * 1000L)
+//        ("sensor_7", 60 * 1000L)
       )
       .keyBy(_._1)
 

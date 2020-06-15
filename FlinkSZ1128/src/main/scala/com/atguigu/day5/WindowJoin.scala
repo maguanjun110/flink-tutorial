@@ -12,11 +12,11 @@ object WindowJoin {
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     val orangeStream = env
-      .fromElements((1, 999L), (1, 1000L))
+      .fromElements((1, 1999L), (1, 2001L))
       .assignAscendingTimestamps(_._2)
 
     val greenStream = env
-      .fromElements((1, 1001L), (1, 1002L))
+      .fromElements((1, 1001L), (1, 1002L), (1, 3999L))
       .assignAscendingTimestamps(_._2)
 
     orangeStream.join(greenStream)

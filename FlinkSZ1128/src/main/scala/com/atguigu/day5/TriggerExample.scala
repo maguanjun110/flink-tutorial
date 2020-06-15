@@ -19,6 +19,7 @@ object TriggerExample {
 
     val stream = env
       .addSource(new SensorSource)
+      .filter(r => r.id.equals("sensor_2"))
       .keyBy(_.id)
       .timeWindow(Time.seconds(10))
       .trigger(new OneSecondIntervalTrigger)
