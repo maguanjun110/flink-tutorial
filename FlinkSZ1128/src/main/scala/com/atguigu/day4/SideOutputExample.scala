@@ -17,7 +17,7 @@ object SideOutputExample {
     stream
       .getSideOutput(new OutputTag[String]("freezing-alarms"))
       .print()
-//    stream.print() // 打印主流
+    stream.print() // 打印主流
     env.execute()
   }
 
