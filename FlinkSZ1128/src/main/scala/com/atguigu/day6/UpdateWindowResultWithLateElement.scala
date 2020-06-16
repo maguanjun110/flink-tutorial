@@ -47,6 +47,9 @@ object UpdateWindowResultWithLateElement {
   }
 
   class UpdatingWindowCountFunction extends ProcessWindowFunction[(String, Long), String, String, TimeWindow] {
+    // process和processElement的区别？
+    // processElement用于KeyedProcessFunction中，也就是没有开窗口的流，来一条元素调用一次
+    // process函数用于ProcessWindowFunction中，水位线超过窗口结束时间时调用一次
     override def process(key: String, context: Context, elements: Iterable[(String, Long)], out: Collector[String]): Unit = {
       val count = elements.size
 
