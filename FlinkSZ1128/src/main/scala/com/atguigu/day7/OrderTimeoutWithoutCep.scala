@@ -12,7 +12,7 @@ object OrderTimeoutWithoutCep {
   def main(args: Array[String]): Unit = {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(1)
+//    env.setParallelism(1)
 
     val stream = env
       .fromElements(
@@ -20,6 +20,7 @@ object OrderTimeoutWithoutCep {
         OrderEvent("order_2", "create", 3000L),
         OrderEvent("order_2", "pay", 4000L)
       )
+      .setParallelism(1)
       .assignAscendingTimestamps(_.eventTime)
       .keyBy(_.orderId)
       .process(new OrderTimeoutFunc)
