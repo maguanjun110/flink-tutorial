@@ -5,6 +5,7 @@ import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.runtime.operators.GenericWriteAheadSink
 import org.apache.flink.util.Collector
 
 object FlatMapWithStateExample {
