@@ -5,6 +5,7 @@ import org.apache.flink.cep.scala.pattern.Pattern
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 
 import scala.collection.Map
 
@@ -45,6 +46,7 @@ object CepExample {
     env.execute()
   }
 
+  // 注意匿名函数的类型
   val func = (pattern: Map[String, Iterable[LoginEvent]]) => {
     val first = pattern.getOrElse("first", null).iterator.next()
     val second = pattern.getOrElse("second", null).iterator.next()
