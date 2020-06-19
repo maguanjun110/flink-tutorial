@@ -23,6 +23,7 @@ object TopHotItems {
                           timestamp: Long)
 
   case class ItemViewCount(itemId: Long,
+                           windowStart: Long,
                            windowEnd: Long,
                            count: Long)
 
@@ -39,12 +40,12 @@ object TopHotItems {
         UserBehavior(arr(0).toLong, arr(1).toLong, arr(2).toLong, arr(3), arr(4).toLong * 1000L)
       })
       .filter(_.behavior.equals("pv"))
-      .assignAscendingTimestamps(_.timestamp) // 分配升序时间戳
-      .keyBy(_.itemId) // 使用商品ID分流
-      .timeWindow(Time.hours(1), Time.minutes(5)) // 开窗
-      .aggregate(new CountAgg, new WindowResult) // 增量聚合和全窗口聚合结合使用
-      .keyBy(_.windowEnd)
-      .process(new TopN(3))
+      .assignAscendingTimestamps(_.timestamp) // 分配升序时间戳 DataStream
+      .keyBy(_.itemId) // 使用商品ID分流 KeyedStream
+      .timeWindow(Time.hours(1), Time.minutes(5)) // 开窗 WindowedStream
+      .aggregate(new CountAgg, new WindowResult) // 增量聚合和全窗口聚合结合使用 DataStream
+      .keyBy(_.windowEnd) // KeyedStream
+      .process(new TopN(3)) // DataStream
 
     stream.print()
     env.execute()
@@ -62,12 +63,13 @@ object TopHotItems {
 
   class WindowResult extends ProcessWindowFunction[Long, ItemViewCount, Long, TimeWindow] {
     override def process(key: Long, context: Context, elements: Iterable[Long], out: Collector[ItemViewCount]): Unit = {
-      out.collect(ItemViewCount(key, context.window.getEnd, elements.head))
+      out.collect(ItemViewCount(key, context.window.getStart, context.window.getEnd, elements.head))
     }
   }
 
   class TopN(val topSize: Int) extends KeyedProcessFunction[Long, ItemViewCount, String] {
 
+    // 只针对当前key可见的
     lazy val listState = getRuntimeContext.getListState(
       new ListStateDescriptor[ItemViewCount]("list-state", Types.of[ItemViewCount])
     )
@@ -94,9 +96,8 @@ object TopHotItems {
       val result = new StringBuilder
 
       result
-        .append("==========================\n")
-        .append("时间：")
-        .append(new Timestamp(timestamp - 100))
+        .append("===========================\n")
+        .append("窗口：" + new Timestamp(allItems.head.windowStart) + " ~~~ " + new Timestamp(allItems.head.windowEnd))
         .append("\n")
 
       for (i <- sortedItems.indices) {
