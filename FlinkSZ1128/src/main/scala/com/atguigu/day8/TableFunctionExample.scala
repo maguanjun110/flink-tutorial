@@ -54,9 +54,6 @@ object TableFunctionExample {
         .toAppendStream[Row]
         .print()
 
-
-
-
     env.execute()
   }
 

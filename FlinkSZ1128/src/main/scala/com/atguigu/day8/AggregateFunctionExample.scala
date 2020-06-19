@@ -49,8 +49,6 @@ object AggregateFunctionExample {
         .print()
 
     env.execute()
-
-
   }
 
   // 累加器的类型
