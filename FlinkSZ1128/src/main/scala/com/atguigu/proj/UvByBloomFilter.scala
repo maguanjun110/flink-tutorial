@@ -60,7 +60,7 @@ object UvByBloomFilter {
 
     override def onEventTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
       if (ctx.getCurrentWatermark >= window.getEnd) {
-        val jedis = new Jedis("localhsot", 6379)
+        val jedis = new Jedis("localhost", 6379)
         val windowEnd = window.getEnd.toString
         println(new Timestamp(windowEnd.toLong), jedis.hget("UvCount", windowEnd))
         TriggerResult.FIRE_AND_PURGE // 为保险起见
@@ -91,7 +91,7 @@ object UvByBloomFilter {
       // 迭代器中只有一条元素，因为每来一条元素，窗口清空一次，见trigger
       val userId = elements.head._2.toString
       // 计算userId对应的bit数组的下标
-      val idx = hash(userId, 1 << 20)
+      val idx = hash(userId, 1 << 29)
 
       // 判断userId是否访问过
       if (!jedis.getbit(windowEnd, idx)) { // 对应的bit为0的话，返回false，用户一定没访问过
