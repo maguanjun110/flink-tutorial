@@ -43,6 +43,9 @@ object HotItemsSQL {
     tableEnv.createTemporaryView("t", stream, 'itemId, 'timestamp.rowtime as 'ts)
 
     // top n只有blink planner支持
+    // 最内部的子查询实现了：stream.keyBy(_.itemId).timeWindow(Time.hours(1), Time.minutes(5)).aggregate(new CountAgg, new WindowResult)
+    // 倒数第二层子查询：.keyBy(_.windowEnd).process(Sort)
+    // 最外层：取出前三名
     val result = tableEnv
       .sqlQuery(
         """
