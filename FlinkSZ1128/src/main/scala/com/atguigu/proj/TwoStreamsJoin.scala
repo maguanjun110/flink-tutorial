@@ -46,7 +46,9 @@ object TwoStreamsJoin {
       .assignAscendingTimestamps(_.eventTime)
       .keyBy(_.orderId)
 
-    val processed = orders.connect(pays).process(new MatchFunction)
+    val processed = orders
+      .connect(pays) // ConnectedStream
+      .process(new MatchFunction)
 
     processed.print()
 
